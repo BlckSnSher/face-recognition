@@ -286,10 +286,24 @@ class HomeScreen:
         print(identified_person)
 
     def openStudentInfo(self, sid_cd):
-        
+        sid = sid_cd.split("_")[0]
+        code = sid_cd.split("_")[1]
+        print(sid, code)
+        select = f"""
+        SELECT *
+        FROM students WHERE
+        student_id = '{sid}' AND course_code = '{code}'
+        """
+
+        cursor.execute(select)
+        data = cursor.fetchone()
+        f = data[1]
+        l = data[2]
+        c = data[4]
+        s = data[5]
         new_window = Toplevel(self.master)
         new_window.title("Face Recognition Student Identifier")
-        StudentInfo(new_window, sid_cd)
+        StudentInfo(new_window, sid, f, l, c, s, code)
 
 
 def update_info():
@@ -297,16 +311,16 @@ def update_info():
 
 
 class StudentInfo:
-    def __init__(self, master, sid_cd):
+    def __init__(self, master, sid, f, l, c, s, code):
         self.master = master
-        self.first_name = StringVar()
-        self.last_name = StringVar()
-        self.crs = StringVar()
-        self.std_id = sid_cd.split("_")[0]
+        self.first_name = f
+        self.last_name = l
+        self.crs = c
+        self.std_id = sid
         self.day = StringVar()
 
-        self.code = sid_cd.split("_")[1]
-        self.sec = StringVar()
+        self.code = code
+        self.sec = s
 
         # time in and time out
         self.ti = StringVar()
@@ -498,23 +512,23 @@ class StudentInfo:
             font=("OpenSansRoman Bold", 24 * -1)
         )
 
-        self.canvas.create_text(
-            717.0,
-            309.0,
-            anchor="nw",
-            text="CS 301",
-            fill="#FFFFFF",
-            font=("OpenSansRoman Bold", 20 * -1)
-        )
-
-        self.canvas.create_text(
-            910.0,
-            309.0,
-            anchor="nw",
-            text="9AM - 10AM",
-            fill="#FFFFFF",
-            font=("OpenSansRoman Bold", 20 * -1)
-        )
+        # self.canvas.create_text(
+        #     717.0,
+        #     309.0,
+        #     anchor="nw",
+        #     text="CS 301",
+        #     fill="#FFFFFF",
+        #     font=("OpenSansRoman Bold", 20 * -1)
+        # )
+        #
+        # self.canvas.create_text(
+        #     910.0,
+        #     309.0,
+        #     anchor="nw",
+        #     text="9AM - 10AM",
+        #     fill="#FFFFFF",
+        #     font=("OpenSansRoman Bold", 20 * -1)
+        # )
 
         self.time = Label(self.master, font=(
             "OpenSansRoman Bold", 22 * -1), background="#438FF4", foreground="#FFFFFF")
@@ -575,16 +589,13 @@ class StudentInfo:
 
     # get the data in database where student id and course code is related
     def fetch_data(self):
-        sid = self.std_id
-        code = self.code
+        sid = str(self.std_id)
+        code = str(self.code)
         print(sid, code)
         select = f"""
-        SELECT firstname,
-        lastname,
-        course,
-        section
+        SELECT *
         FROM students WHERE
-        student_id = {sid} AND course_code = '{code}'
+        student_id = '{sid}' AND course_code = '{code}'
         """
 
         cursor.execute(select)
@@ -592,12 +603,10 @@ class StudentInfo:
         if data is None:
             messagebox.showerror("Error", "Data not found")
         else:
-            for x in data:
-                print(x)
-                self.first_name.set(x[0])
-                self.last_name.set(x[1])
-                self.crs.set(x[2])
-                self.sec.set(x[3])
+            self.first_name.set(data[1])
+            self.last_name.set(data[2])
+            self.crs.set(data[4])
+            self.sec.set(data[5])
 
 
 window = Tk()
