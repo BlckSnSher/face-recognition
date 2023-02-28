@@ -1,4 +1,5 @@
 import datetime
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -7,6 +8,8 @@ from tkinter import END, Frame, Label, StringVar, Tk, Canvas, Button, PhotoImage
 import cv2
 import joblib
 import mysql.connector as connector
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / \
@@ -109,6 +112,23 @@ def time_in_function(firstname, lastname, student_id, course_code):
 
     cursor.execute(attendance_time_in)
     db.commit()
+
+
+def train_model():
+    faces = []
+    labels = []
+    user_list = os.listdir('./static/faces')
+    for user in user_list:
+        for image_name in os.listdir(f'./static/faces/{user}'):
+            img = cv2.imread(f'./static/faces/{user}/{image_name}')
+            resized_face = cv2.resize(img, (50, 50))
+            faces.append(resized_face.ravel())
+            labels.append(user)
+
+    faces = np.array(faces)
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(faces, labels)
+    joblib.dump(knn, './static/face_recognition_model.pkl')
 
 
 def time_out_function(student_id, course_code):
@@ -329,6 +349,7 @@ class HomeScreen:
     # face recognition
 
     def face_recognition(self):
+        train_model()
         global identified_person
         cam = cv2.VideoCapture(0)
         ret = True
@@ -372,8 +393,8 @@ class HomeScreen:
         exists = check_attendance(student_id, course_code)
         if exists:
             cursor.execute(
-                "SELECT time_out WHERE "
-                f"student_id = '{student_id}' AND"
+                "SELECT time_out FROM attendance WHERE "
+                f"student_id = '{student_id}' AND "
                 f"course_code = '{course_code}'"
             )
             result = cursor.fetchone()
@@ -402,7 +423,7 @@ class HomeScreen:
         get_time_in_out = (f"""
         SELECT time_in, time_out FROM 
         attendance WHERE 
-        student_id = '{student_id}' AND
+        student_id = '{student_id}' AND 
         course_code = '{course_code}'
         """)
         cursor.execute(get_time_in_out)
@@ -418,7 +439,7 @@ class HomeScreen:
         get_time_in_out = (f"""
         SELECT time_in, time_out FROM 
         attendance WHERE 
-        student_id = '{student_id}' AND
+        student_id = '{student_id}' AND 
         course_code = '{course_code}'
         """)
         cursor.execute(get_time_in_out)
