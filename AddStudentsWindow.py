@@ -432,8 +432,8 @@ class AddStudentWindow:
             self.entry_7.config(fg="grey")
 
     def change_day(self, event):
-        self.selected_day = self.entry_8.get()
-        print(self.selected_day)
+        selected_day = self.entry_8.get()
+        print(selected_day)
 
     def submit_students(self):
         fname = self.entry_1.get()
@@ -473,10 +473,6 @@ class AddStudentWindow:
                 for record in records:
                     print(record)
                 print(cursor.rowcount, "records inserted")
-                fname = ""
-                lname = ""
-                student_id = ""
-                section = ""
             else:
                 messagebox.showerror(
                     "Error", f"Student {student_id} already exists")
@@ -516,21 +512,22 @@ class AddStudentWindow:
                         cam.release()
                         cv2.destroyAllWindows()
                         response = messagebox.askyesno(
-                            "Success", f"Student {student_id} has been added successfully. Do you want to clear all the fields?")
+                            "Success",
+                            f"Student {student_id} has been added successfully. Do you want to clear all the fields?")
                         if response:
                             self.master.destroy()
                             subprocess.run(
                                 ["python", "./AddStudentsWindow.py"])
                         else:
-                            None
+                            return
                     else:
-                        None
+                        return
             cam.release()
             cv2.destroyAllWindows()
         else:
-            None
+            return
 
-    def Capture(self, id, frame):
+    def Capture(self, sid, frame):
 
         # convert frame to grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -544,7 +541,7 @@ class AddStudentWindow:
         # save if there is exactly one face detected
         if len(faces) == 1:
             self.submit_students()
-            cv2.imwrite(f"./data/{id}.jpg", frame)
+            cv2.imwrite(f"./data/{sid}.jpg", frame)
             return True
         else:
             messagebox.showerror(

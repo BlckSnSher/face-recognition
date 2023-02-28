@@ -27,6 +27,21 @@ db = mysql.connector.connect(
 
 cur = db.cursor()
 
+query_create_database = """
+CREATE TABLE IF NOT EXISTS students (
+id INT PRIMARY KEY AUTO_INCREMENT,
+firstname VARCHAR(30),
+lastname VARCHAR(30),
+student_id VARCHAR(30),
+course VARCHAR(30),
+section VARCHAR(30),
+course_code VARCHAR(20),
+time VARCHAR(20),
+day VARCHAR(20)
+)
+"""
+cur.execute(query_create_database)
+
 
 def on_close():
     response = messagebox.askyesno(
@@ -40,7 +55,6 @@ def on_close():
 
 face_detector = cv2.CascadeClassifier(
     "./resources/haarcascade_frontalface_default.xml")
-cap = cv2.VideoCapture(0)
 
 
 def extract_face(img):
@@ -469,8 +483,6 @@ class AddStudentWindow:
             f'{time_schedule[11:13]}:{time_schedule[14:16]} PM'
         )
 
-        print(formatted_time_pm_pm)
-
         day_schedule = self.entry_8.get().capitalize()
 
         if (
@@ -502,63 +514,36 @@ class AddStudentWindow:
             exists = check_student(student_id, course_code)
             if exists:
                 messagebox.showerror(
-                    "Error", f"Student {student_id} is already registered in course {course_code}.")
+                    "Error",
+                    f"Student {student_id} is already registered in course {course_code}."
+                )
             else:
                 self.push_to_database(
-                    first_name,
-                    last_name,
-                    student_id,
-                    course,
-                    section,
-                    course_code,
-                    time_schedule,
-                    day_schedule
+                    first_name, last_name,
+                    student_id, course,
+                    section, course_code,
+                    time_schedule, day_schedule
                 )
 
     def push_to_database(self, fn, ln, sid, crs, sc, crs_cd, ts, ds):
-        query_create_database = """
-        CREATE TABLE IF NOT EXISTS students (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        firstname VARCHAR(30),
-        lastname VARCHAR(30),
-        student_id VARCHAR(30),
-        course VARCHAR(30),
-        section VARCHAR(30),
-        course_code VARCHAR(20),
-        time VARCHAR(20),
-        day VARCHAR(20)
-        )
-        """
-        cur.execute(query_create_database)
-        db.commit()
 
         query_insert = """
         INSERT INTO students (
-        firstname,
-        lastname,
-        student_id,
-        course,
-        section,
-        course_code,
-        time,
-        day
+        firstname, lastname,
+        student_id, course,
+        section, course_code,
+        time, day
         )
         """
         values = f"""
         VALUES (
-        '{fn}', 
-        '{ln}', 
-        '{sid}', 
-        '{crs}', 
-        '{sc}', 
-        '{crs_cd}',
-        '{ts}', 
-        '{ds}'
+        '{fn}', '{ln}', '{sid}', 
+        '{crs}', '{sc}', '{crs_cd}',
+        '{ts}', '{ds}'
         )
         """
         cur.execute(query_insert + values)
         db.commit()
-        print(query_insert + values)
 
         cur.execute(
             "SELECT * FROM students"
@@ -581,7 +566,6 @@ class AddStudentWindow:
         with open(f'./Attendance/Students-{crs_cd}.csv', 'a') as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow([sid, fn, ln, crs, sc, crs_cd, ts, ds])
-
         self.add()
 
     def clear_fields(self):
@@ -619,12 +603,40 @@ class AddStudentWindow:
                 break
             cv2.imshow("Adding new user", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                r = messagebox.askyesno(
+                    "Exit",
+                    "Are you sure you want to exit?"
+                )
+                if r:
+                    break
+                else:
+                    continue
+            if cv2.waitKey(1) & 0xFF == ord(' '):
+                r = messagebox.askyesno(
+                    "Exit",
+                    "Are you sure you want to exit?"
+                )
+                if r:
+                    break
+                else:
+                    continue
+
         cam.release()
         cv2.destroyAllWindows()
         print("Training Models")
         train_model()
 
+        response = messagebox.askyesno(
+            "Success",
+            f"Student {student_id} has been registered in course {course_code}."
+            f"Do you want to clear all fields?"
+        )
+        if response:
+            self.clear_fields()
+        else:
+            return
+
+    # component testing function
     def test_submit(self):
         first_name = self.entry_1.get()
         last_name = self.entry_2.get()
@@ -634,12 +646,8 @@ class AddStudentWindow:
         course_code = self.entry_6.get()
 
         print(
-            first_name,
-            last_name,
-            student_id,
-            course,
-            section,
-            course_code
+            first_name, last_name, student_id,
+            course, section, course_code
         )
 
 

@@ -13,6 +13,19 @@ def frame_0(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
 
+# database
+db = con.connect(
+    host="localhost",
+    user="root",
+    password="root",
+)
+
+cur = db.cursor()
+
+cur.execute("CREATE DATABASE IF NOT EXISTS mydb")
+cur.execute("USE mydb")
+
+
 class LoginScreen:
     def __init__(self, master):
         self.master = master
@@ -203,16 +216,6 @@ class LoginScreen:
         password = self.entry_2.get()
 
         if username != "" and password != "":
-            db = con.connect(
-                host="localhost",
-                user="root",
-                password="root",
-            )
-
-            cur = db.cursor()
-
-            cur.execute("CREATE DATABASE IF NOT EXISTS mydb")
-            cur.execute("USE mydb")
 
             cur.execute(
                 f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'")

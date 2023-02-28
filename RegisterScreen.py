@@ -15,6 +15,20 @@ def frame5(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
 
+conn = con.connect(
+    host="localhost",
+    user="root",
+    password="root",
+    database="mydb"
+)
+cursor = conn.cursor()
+cursor.execute(
+    "CREATE TABLE IF NOT EXISTS users "
+    "(id INT AUTO_INCREMENT PRIMARY KEY, "
+    "username VARCHAR(40), "
+    "password VARCHAR(40))"
+)
+
 root = Tk()
 
 
@@ -239,37 +253,31 @@ class RegisterScreen:
         confirm_password = self.entry_3.get()
         c = checkInputRegister(username, password, confirm_password)
         if c:
-            conn = con.connect(
-                host="localhost",
-                user="root",
-                password="root",
-                database="mydb"
-            )
-            cursor = conn.cursor()
-            cursor.execute(
-                "CREATE TABLE IF NOT EXISTS users "
-                "(id INT AUTO_INCREMENT PRIMARY KEY, "
-                "username VARCHAR(40), "
-                "password VARCHAR(40))"
-            )
-            cursor.execute(
-                f"SELECT * FROM users WHERE username='{username}'"
-            )
-            result = cursor.fetchone()
-            if result is None:
-                if password != confirm_password:
-                    messagebox.showerror(
-                        "Error", "Passwords do not match.")
-                else:
+            if password != confirm_password:
+                messagebox.showerror(
+                    "Error", "Passwords do not match."
+                )
+            else:
+                cursor.execute(
+                    f"SELECT * FROM users WHERE username='{username}'"
+                )
+                result = cursor.fetchall()
+                print(len(result))
+                if len(result) == 0:
                     cursor.execute(
-                        f"INSERT INTO users (username, password) VALUES ('{username}', '{password}')")
+                        f"INSERT INTO users (username, password) VALUES ('{username}', '{password}')"
+                    )
                     conn.commit()
                     messagebox.showinfo(
-                        "Success", "Registration Successful")
+                        "Success", "Registration Successful"
+                    )
                     self.master.destroy()
                     subprocess.run(["python", "./LoginScreen.py"])
-            else:
-                messagebox.showerror("Error", "Username already exists!")
+                else:
+                    messagebox.showerror(
+                        "Error",
+                        "Username is already taken."
+                    )
         else:
             messagebox.showerror("Error", "Please fill all the fields.")
 

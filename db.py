@@ -9,19 +9,13 @@ conn = con.connect(
 
 cursor = conn.cursor()
 
-# cursor.execute("DROP TABLE IF EXISTS students")
-# conn.commit()
+cursor.execute("select time_out from attendance where firstname = 'King'")
+c = cursor.fetchone()
+print(c[0])
+print(c)
+if c[0] == '':
+    print("True")
+else:
+    print("false")
 
-# std_id = input("Enter student ID: ")
-# cursor.execute(f"SELECT * FROM students WHERE student_id = '{std_id}'")
-# r = cursor.fetchone()
-
-# for i in range(len(r)):
-#     fname = r[1]
-#     lname = r[2]
-
-# print(fname, lname)
-name = input("Enter name: ")
-cursor.execute(f"select * from students where firstname like '%{name}%'")
-for x in cursor:
-    print(x)
+print(cursor.rowcount)

@@ -54,6 +54,21 @@ db = connector.connect(
 
 cursor = db.cursor()
 
+create_table_attendance = """
+CREATE TABLE IF NOT EXISTS attendance 
+(att_id INT AUTO_INCREMENT PRIMARY KEY, 
+firstname VARCHAR(40), 
+lastname VARCHAR(40), 
+student_id VARCHAR(10), 
+course_code VARCHAR(40), 
+time_in VARCHAR(40), 
+time_out VARCHAR(40), 
+date_attend VARCHAR(40), 
+day_attend VARCHAR(40))
+"""
+
+cursor.execute(create_table_attendance)
+
 
 def list_of_students_function():
     messagebox.showinfo("Success", "List of Students")
@@ -72,6 +87,56 @@ def extract_face(img):
 def identify_face(face_array):
     model = joblib.load('./static/face_recognition_model.pkl')
     return model.predict(face_array)
+
+
+def time_in_function(firstname, lastname, student_id, course_code):
+    current_time = time.strftime("%I:%M %p", time.localtime())
+    time_out = ""
+    current_date = datetime.datetime.now().strftime("%B %d, %Y")
+    current_day = datetime.datetime.now().strftime("%A")
+
+    attendance_time_in = (f"""
+    INSERT INTO attendance 
+    (firstname, lastname, 
+    student_id, course_code, 
+    time_in, time_out, date_attend, 
+    day_attend) VALUES 
+    ('{firstname}', '{lastname}', 
+    '{student_id}', '{course_code}', 
+    '{current_time}', '{time_out}',
+    '{current_date}', '{current_day}')
+    """)
+
+    cursor.execute(attendance_time_in)
+    db.commit()
+
+
+def time_out_function(student_id, course_code):
+    current_time = time.strftime("%I:%M %p", time.localtime())
+
+    attendance_time_out = (f"""
+    UPDATE attendance SET time_out = '{current_time}' 
+    WHERE student_id = '{student_id}' AND 
+    course_code = '{course_code}'
+    """)
+
+    cursor.execute(attendance_time_out)
+    db.commit()
+
+
+def check_attendance(student_id, course_code):
+    select = (f"""
+    SELECT * FROM attendance WHERE 
+    student_id = '{student_id}' AND 
+    course_code = '{course_code}'
+    """)
+
+    cursor.execute(select)
+    data = cursor.fetchone()
+    if data is not None:
+        return True
+    else:
+        return False
 
 
 class HomeScreen:
@@ -280,51 +345,107 @@ class HomeScreen:
             cv2.imshow("Frame", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+            elif cv2.waitKey(1) & 0xFF == ord(' '):
+                break
         cam.release()
         cv2.destroyAllWindows()
         self.openStudentInfo(identified_person)
-        print(identified_person)
 
     def openStudentInfo(self, sid_cd):
-        sid = sid_cd.split("_")[0]
-        code = sid_cd.split("_")[1]
-        print(sid, code)
+        student_id = sid_cd.split("_")[0]
+        course_code = sid_cd.split("_")[1]
+
+        # get the data of the student
         select = f"""
         SELECT *
         FROM students WHERE
-        student_id = '{sid}' AND course_code = '{code}'
+        student_id = '{student_id}' AND course_code = '{course_code}'
         """
-
         cursor.execute(select)
         data = cursor.fetchone()
-        f = data[1]
-        l = data[2]
-        c = data[4]
-        s = data[5]
+        firstname = data[1]
+        lastname = data[2]
+        course = data[4]
+        section = data[5]
+
+        # fetch the data of the student
+        exists = check_attendance(student_id, course_code)
+        if exists:
+            cursor.execute(
+                "SELECT time_out WHERE "
+                f"student_id = '{student_id}' AND"
+                f"course_code = '{course_code}'"
+            )
+            result = cursor.fetchone()
+            if result[0] == '':
+                # timeout function
+                time_out_function(
+                    student_id, course_code
+                )
+            else:
+                ask = messagebox.askyesno(
+                    "Student Info",
+                    "You have already timed out.\n"
+                    "Do you want to check your Student Info?"
+                )
+                if not ask:
+                    return
+
+        else:
+            # time in function
+            time_in_function(
+                firstname, lastname,
+                student_id, course_code
+            )
+
+        # check time in and time out
+        get_time_in_out = (f"""
+        SELECT time_in, time_out FROM 
+        attendance WHERE 
+        student_id = '{student_id}' AND
+        course_code = '{course_code}'
+        """)
+        cursor.execute(get_time_in_out)
+        fetch = cursor.fetchone()
+        time_in = fetch[0]
+        time_out = fetch[1]
+
         new_window = Toplevel(self.master)
         new_window.title("Face Recognition Student Identifier")
-        StudentInfo(new_window, sid, f, l, c, s, code)
+        StudentInfo(new_window, student_id, firstname, lastname, course, section, course_code, time_in, time_out)
 
+    def navigate(self, firstname, lastname, course, section, student_id, course_code):
+        get_time_in_out = (f"""
+        SELECT time_in, time_out FROM 
+        attendance WHERE 
+        student_id = '{student_id}' AND
+        course_code = '{course_code}'
+        """)
+        cursor.execute(get_time_in_out)
+        fetch = cursor.fetchone()
+        time_in = fetch[0]
+        time_out = fetch[1]
 
-def update_info():
-    cursor.execute(f"SELECT ")
+        new_window = Toplevel(self.master)
+        new_window.title("Face Recognition Student Identifier")
+        StudentInfo(new_window, student_id, firstname, lastname, course, section, course_code, time_in, time_out)
 
 
 class StudentInfo:
-    def __init__(self, master, sid, f, l, c, s, code):
+    def __init__(self, master, sid, firstname, lastname, course, section, code, time_in, time_out):
         self.master = master
-        self.first_name = f
-        self.last_name = l
-        self.crs = c
+        self.first_name = firstname
+        self.last_name = lastname
+        self.crs = course
         self.std_id = sid
         self.day = StringVar()
 
         self.code = code
-        self.sec = s
+        self.sec = section
 
         # time in and time out
-        self.ti = StringVar()
-        self.to = StringVar()
+        self.ti = time_in
+        self.to = time_out
 
         # date and day
         self.curr_date = datetime.datetime.now().strftime("%B %d, %Y")
@@ -486,19 +607,10 @@ class StudentInfo:
         )
 
         self.canvas.create_text(
-            147.0,
-            567.0,
-            anchor="nw",
-            text="09:30:23",
-            fill="#FFFFFF",
-            font=("OpenSansRoman Bold", 24 * -1)
-        )
-
-        self.canvas.create_text(
             184.0,
             653.0,
             anchor="nw",
-            text="09:30:23",
+            text=self.ti,
             fill="#FFFFFF",
             font=("OpenSansRoman Bold", 24 * -1)
         )
@@ -507,28 +619,10 @@ class StudentInfo:
             184.0,
             709.0,
             anchor="nw",
-            text="09:30:23",
+            text=self.to,
             fill="#FFFFFF",
             font=("OpenSansRoman Bold", 24 * -1)
         )
-
-        # self.canvas.create_text(
-        #     717.0,
-        #     309.0,
-        #     anchor="nw",
-        #     text="CS 301",
-        #     fill="#FFFFFF",
-        #     font=("OpenSansRoman Bold", 20 * -1)
-        # )
-        #
-        # self.canvas.create_text(
-        #     910.0,
-        #     309.0,
-        #     anchor="nw",
-        #     text="9AM - 10AM",
-        #     fill="#FFFFFF",
-        #     font=("OpenSansRoman Bold", 20 * -1)
-        # )
 
         self.time = Label(self.master, font=(
             "OpenSansRoman Bold", 22 * -1), background="#438FF4", foreground="#FFFFFF")
@@ -570,7 +664,7 @@ class StudentInfo:
 
         self.clock()
         self.schedule()
-        self.fetch_data()
+        # self.fetch_data()
 
     def clock(self):
         curr_time = time.strftime("%I:%M:%S %p", time.localtime())
@@ -586,27 +680,6 @@ class StudentInfo:
             self.table.insert("", END, values=data_lists, tags="disabled")
             self.table.tag_bind(
                 "disabled", "<<TreeviewSelect>>", lambda event: "break")
-
-    # get the data in database where student id and course code is related
-    def fetch_data(self):
-        sid = str(self.std_id)
-        code = str(self.code)
-        print(sid, code)
-        select = f"""
-        SELECT *
-        FROM students WHERE
-        student_id = '{sid}' AND course_code = '{code}'
-        """
-
-        cursor.execute(select)
-        data = cursor.fetchone()
-        if data is None:
-            messagebox.showerror("Error", "Data not found")
-        else:
-            self.first_name.set(data[1])
-            self.last_name.set(data[2])
-            self.crs.set(data[4])
-            self.sec.set(data[5])
 
 
 window = Tk()
