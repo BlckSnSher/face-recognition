@@ -654,5 +654,5 @@ class AddStudentWindow:
 window = Tk()
 window.protocol("WM_DELETE_WINDOW", on_close)
 app = AddStudentWindow(window)
-window.resizable(False, False)
+window.resizable(True, True)
 window.mainloop()

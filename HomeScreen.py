@@ -349,6 +349,7 @@ class HomeScreen:
     # face recognition
 
     def face_recognition(self):
+
         train_model()
         global identified_person
         cam = cv2.VideoCapture(0)
