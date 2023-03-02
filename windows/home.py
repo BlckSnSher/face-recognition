@@ -11,6 +11,14 @@ import mysql.connector as connector
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 
+# create dir if no exist
+if not os.path.isdir('Attendance'):
+    os.makedirs('Attendance')
+if not os.path.isdir('static/faces'):
+    os.makedirs('static/faces')
+
+print("loading modules....")
+print("connecting to database....")
 # database
 db = connector.connect(
     host='localhost',
@@ -30,7 +38,8 @@ course_code VARCHAR(40),
 time_in VARCHAR(40), 
 time_out VARCHAR(40), 
 date_attend VARCHAR(40), 
-day_attend VARCHAR(40))
+day_attend VARCHAR(40), 
+lab_room VARCHAR(40))
 """
 
 create_table_student = """
@@ -46,12 +55,14 @@ lab_room VARCHAR(40)
 
 cursor.execute(create_table_student)
 cursor.execute(create_table_attendance)
-
+print("loading.....")
 # global variables
 global identified_person
-current_time = time.strftime("%I:%M %p", time.localtime())
-current_date = datetime.now().strftime("%B %d, %Y")
-current_day = datetime.now().strftime("%A")
+
+# time and date
+CURRENT_TIME = time.strftime("%I:%M %p", time.localtime())
+CURRENT_DATE = datetime.now().strftime("%B %d, %Y")
+CURRENT_DAY = datetime.now().strftime("%A")
 
 # face detector variable using haar cascade
 face_detector = cv2.CascadeClassifier(
@@ -69,15 +80,19 @@ def relative_to_assets(path: str) -> Path:
 def extract_face(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face_points = face_detector.detectMultiScale(gray, 1.3, 5)
+    print("extracting face: ", face_points)
     return face_points
 
 
 def identify_face(face_array):
     model = joblib.load('./static/face_recognition_model.pkl')
-    return model.predict(face_array)
+    face = model.predict(face_array)
+    print("identified face: ", face)
+    return face
 
 
 def train_model():
+    print("training model....")
     faces = []
     labels = []
     user_list = os.listdir('./static/faces')
@@ -94,102 +109,8 @@ def train_model():
     joblib.dump(knn, './static/face_recognition_model.pkl')
 
 
-def time_in_function():
-    student = face_recognition()
-    student_id = student.split('_')[0]
-    course_code = student.split('_')[0]
-
-    get_student = ("""
-    SELECT firstname, lastname FROM students 
-    WHERE student_id = '{student_id}' AND 
-    course_code = '{course_code}'
-    """).format(student_id=student_id, course_code=course_code)
-    cursor.execute(get_student)
-    data = cursor.fetchone()
-    firstname = data[0]
-    lastname = data[1]
-
-    exists = fetch_data(student_id, course_code)
-    if len(exists) > 0:
-        update_attendance = (f"""
-        UPDATE attendance SET time_in = '{current_time}' 
-        WHERE student_id = '{student_id}' AND 
-        course_code = '{course_code}' AND 
-        date_attend = '{current_date}'
-        """)
-        cursor.execute(update_attendance)
-        db.commit()
-
-    else:
-        attendance_time_in = (f"""
-            INSERT INTO attendance 
-            (firstname, lastname, 
-            student_id, course_code, 
-            time_in, date_attend, 
-            day_attend) VALUES 
-            ('{firstname}', '{lastname}', 
-            '{student_id}', '{course_code}', 
-            '{current_time}',
-            '{current_date}', '{current_day}')
-            """)
-        cursor.execute(attendance_time_in)
-        db.commit()
-
-
-def time_out_function():
-    student = face_recognition()
-    student_id = student.split('_')[0]
-    course_code = student.split('_')[0]
-
-    get_student = ("""
-        SELECT firstname, lastname FROM students 
-        WHERE student_id = '{student_id}' AND 
-        course_code = '{course_code}'
-        """).format(student_id=student_id, course_code=course_code)
-    cursor.execute(get_student)
-    data = cursor.fetchone()
-    firstname = data[0]
-    lastname = data[1]
-
-    exists = fetch_data(student_id, course_code)
-    if len(exists) > 0:
-        update_attendance = (f"""
-            UPDATE attendance SET time_out = '{current_time}' 
-            WHERE student_id = '{student_id}' AND 
-            course_code = '{course_code}' AND 
-            date_attend = '{current_date}'
-            """)
-        cursor.execute(update_attendance)
-        db.commit()
-    else:
-        attendance_time_in = (f"""
-                INSERT INTO attendance 
-                (firstname, lastname, 
-                student_id, course_code, 
-                time_out, date_attend, 
-                day_attend) VALUES 
-                ('{firstname}', '{lastname}', 
-                '{student_id}', '{course_code}', 
-                '{current_time}',
-                '{current_date}', '{current_day}')
-                """)
-        cursor.execute(attendance_time_in)
-        db.commit()
-
-
-def fetch_data(student_id, course_code):
-    get_attendance = (f"""
-    SELECT * FROM attendance WHERE 
-    student_id = '{student_id}' AND 
-    course_code = '{course_code}' AND 
-    date_attend = '{current_date}'
-    """)
-    cursor.execute(get_attendance)
-    return cursor.fetchall()
-
-
 def face_recognition():
-    train_model()
+    print("opening camera please wait....")
     global identified_person
     cam = cv2.VideoCapture(0)
     ret = True
@@ -210,7 +131,101 @@ def face_recognition():
             break
     cam.release()
     cv2.destroyAllWindows()
+    train_model()
     return identified_person
+
+
+def push_record(student_id, course_code, category):
+    print("fetching data .....")
+    # get the info of the students
+    get_info = f"""
+    select firstname, lastname,
+    lab_room from students where 
+    student_id = '{student_id}' and 
+    course_code = '{course_code}'
+    """
+    cursor.execute(get_info)
+    data = cursor.fetchone()
+    firstname = data[0]
+    lastname = data[1]
+    lab_room = data[2]
+
+    # checking attendance
+    print("checking attendance....")
+    exists = check_attendance(student_id, course_code, lab_room)
+    if exists is None:
+        # push the data
+        print("push data to database ....")
+        insert_data = f"""
+        insert into attendance ( 
+        firstname, lastname,
+        student_id, course_code, 
+        time_in, time_out, date_attend,
+        day_attend, lab_room) values (
+        '{firstname}', '{lastname}', 
+        '{student_id}', '{course_code}', 
+        '{CURRENT_TIME}', '{""}', '{CURRENT_DATE}',
+        '{CURRENT_DAY}', '{lab_room}')
+        """
+        cursor.execute(insert_data)
+        db.commit()
+        messagebox.showinfo(
+            "Success",
+            f"Student {student_id} has timed in Lab Room {lab_room} with the course {course_code}.\n"
+            f"{category}: {CURRENT_TIME}"
+        )
+    else:
+        # update time out
+        print("updating record .....")
+        update_timeout = f"""
+        update attendance set time_out = '{CURRENT_TIME}' where 
+        student_id = '{student_id}' and course_code = '{course_code}' and 
+        date_attend = '{CURRENT_DATE}' and lab_room = '{lab_room}'
+        """
+        cursor.execute(update_timeout)
+        db.commit()
+        print(cursor.rowcount, "row updated")
+        messagebox.showinfo(
+            "Success",
+            f"Student {student_id} has timed in Lab Room {lab_room} with the course {course_code}.\n"
+            f"Time Out: {CURRENT_TIME}"
+        )
+        cursor.execute("select * from attendance")
+        print(cursor.fetchall())
+
+
+def time_in_function():
+    student = face_recognition()
+    student_id = student.split("_")[0]
+    course_code = student.split("_")[1]
+    push_record(student_id, course_code, category="Time In")
+
+
+def time_out_function():
+    student = face_recognition()
+    student_id = student.split("_")[0]
+    course_code = student.split("_")[1]
+    push_record(student_id, course_code, category="Time Out")
+
+
+def check_attendance(student_id, course_code, lab_room):
+    get_attendance = f"""
+    select * from attendance where 
+    student_id = '{student_id}' and 
+    course_code = '{course_code}' and 
+    date_attend = '{CURRENT_DATE}' and 
+    lab_room = '{lab_room}'
+    """
+    cursor.execute(get_attendance)
+    return cursor.fetchone()
+
+
+def no_face_error():
+    if len(os.listdir('./static/face')) == 0:
+        messagebox.showerror("Error", "No registered student yet.")
+
+
+print("window is opening....")
 
 
 class HomeWindow:
@@ -325,7 +340,7 @@ class HomeWindow:
             image=self.button_image_6,
             borderwidth=0,
             highlightthickness=0,
-            command=self.time_in,
+            command=time_in_function,
             relief="flat"
         )
         self.button_6.place(
@@ -341,7 +356,7 @@ class HomeWindow:
             image=self.button_image_7,
             borderwidth=0,
             highlightthickness=0,
-            command=self.time_out,
+            command=time_out_function,
             relief="flat"
         )
         self.button_7.place(
@@ -388,16 +403,12 @@ class HomeWindow:
         subprocess.run(['python', 'add_student.py'])
 
     def logout_function(self):
-        self.master.destroy()
-        subprocess.run(['python', 'add_student.py'])
-
-    def time_in(self):
-        time_in_function()
-        messagebox.showinfo('Time In', 'Time In Successfully')
-
-    def time_out(self):
-        time_out_function()
-        messagebox.showinfo('Time Out', 'Time Out Successfully')
+        response = messagebox.askyesno(
+            "Logout", "Are you sure you want to log out?"
+        )
+        if response:
+            self.master.destroy()
+            subprocess.run(["python", "./login.py"])
 
 
 window = Tk()

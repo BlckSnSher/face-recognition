@@ -12,6 +12,7 @@ ASSETS_PATH = OUTPUT_PATH / Path(r"./assets/frame0")
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
+print("connecting to database ....")
 
 db = mysql.connector.connect(
     host='localhost',
@@ -37,7 +38,7 @@ password VARCHAR(40)
 """)
 cursor.execute(query)
 
-
+print("loading modules .....")
 def login_function(username, password):
     get_user = """
     SELECT * FROM users WHERE 
@@ -66,7 +67,7 @@ def login_function(username, password):
             )
             return True
 
-
+print("starting .....")
 class LoginWindow:
     def __init__(self, master):
         self.master = master

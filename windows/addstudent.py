@@ -1,4 +1,3 @@
-
 import csv
 import os
 import subprocess
@@ -103,6 +102,19 @@ def check_student(sid, crs_cd):
         return False
     else:
         return True
+
+
+def create_csv(crs_cd):
+    if f'Students-{crs_cd}.csv' not in os.listdir('Attendance'):
+        with open(f'./Attendance/Student-{crs_cd}.csv', 'w') as f:
+            f.write(
+                'Student Id,First name,Last name,Course,Section,Course Code,Time,Day,Lab Room')
+
+
+def write_csv(sid, fn, ln, crs, sc, crs_cd, ts, ds, lr):
+    with open(f'./Attendance/Students-{crs_cd}.csv', 'a') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow([sid, fn, ln, crs, sc, crs_cd, ts, ds])
 
 
 class AddStudentWindow:
@@ -304,21 +316,6 @@ class AddStudentWindow:
         self.entry_7.insert(0, "09:00 AM - 10:30 AM")
         self.entry_7.bind("<FocusIn>", self.on_focus_in)
         self.entry_7.bind("<FocusOut>", self.on_focus_out)
-
-        # self.entry_image_8 = PhotoImage(
-        #     file=relative_to_assets("entry_8.png"))
-        # self.entry_bg_8 = self.canvas.create_image(
-        #     230.5,
-        #     470.555908203125,
-        #     image=self.entry_image_8
-        # )
-        # self.entry_8 = Entry(
-        #     bd=0,
-        #     bg="#FFFFFF",
-        #     fg="#000716",
-        #     highlightthickness=0,
-        #     font=("OpenSansRoman Regular", 12 * -1)
-        # )
 
         self.day = ["Monday", "Tuesday", "Wednesday",
                     "Thursday", "Friday", "Saturday", "Sunday"]
@@ -561,7 +558,7 @@ class AddStudentWindow:
                 )
 
     def push_to_database(self, fn, ln, sid, crs, sc, crs_cd, ts, ds, lr):
-
+        print("pushing to database .....")
         query_insert = """
         INSERT INTO students (
         firstname, lastname,
@@ -587,20 +584,12 @@ class AddStudentWindow:
             print(x)
         print(cur.rowcount, " students added")
 
-        # create dir if no exist
-        if not os.path.isdir('Attendance'):
-            os.makedirs('Attendance')
-        if not os.path.isdir('static/faces'):
-            os.makedirs('static/faces')
-        if f'Students-{crs_cd}.csv' not in os.listdir('Attendance'):
-            with open(f'./Attendance/Student-{crs_cd}.csv', 'w') as f:
-                f.write(
-                    'Student Id,First name,Last name,Course,Section,Course Code,Time,Day')
+        # create a csv file if not exist
+        create_csv(crs_cd)
 
         # push to csv file
-        with open(f'./Attendance/Students-{crs_cd}.csv', 'a') as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow([sid, fn, ln, crs, sc, crs_cd, ts, ds])
+        write_csv(sid, fn, ln, crs, sc, crs_cd, ts, ds, lr)
+
         self.add()
 
     def clear_fields(self):
@@ -613,6 +602,7 @@ class AddStudentWindow:
         self.entry_9.delete("0", END)
 
     def add(self):
+        print("opening camera .....")
         student_id = self.entry_3.get()
         course_code = self.entry_6.get().upper()
 
@@ -671,7 +661,6 @@ class AddStudentWindow:
             self.clear_fields()
         else:
             return
-
 
     def test_function(self):
         first_name = self.entry_1.get()
