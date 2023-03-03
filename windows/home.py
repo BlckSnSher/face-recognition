@@ -88,7 +88,10 @@ def identify_face(face_array):
     model = joblib.load('./static/face_recognition_model.pkl')
     face = model.predict(face_array)
     print("identified face: ", face)
-    return face
+    if len(face) == 0:
+        return "Not Registered"
+    else:
+        return face
 
 
 def train_model():
@@ -122,7 +125,12 @@ def face_recognition():
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
             face = cv2.resize(frame[y:y + h, x:x + w], (50, 50))
             identified_person = identify_face(face.reshape(1, -1))[0]
-            cv2.putText(frame, identified_person,
+            proba = identify_face(face.reshape(1, -1))[0]
+            knn = joblib.load('static/face_recognition_model.pkl')
+            proba_matrix = knn.predict_proba(face.reshape(1, -1))
+            max_proba = np.max(proba_matrix)
+            accuracy = round(max_proba * 100, 2)
+            cv2.putText(frame, f'{identified_person} ({accuracy}) ',
                         (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
         cv2.imshow("Frame", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -276,7 +284,7 @@ class HomeWindow:
             image=self.button_image_2,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: print("button_2 clicked"),
+            command=self.update_student,
             relief="flat"
         )
         self.button_2.place(
@@ -292,7 +300,7 @@ class HomeWindow:
             image=self.button_image_3,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: print("button_3 clicked"),
+            command=self.delete_student,
             relief="flat"
         )
         self.button_3.place(
@@ -308,7 +316,7 @@ class HomeWindow:
             image=self.button_image_4,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: print("button_4 clicked"),
+            command=lambda:self.list_student,
             relief="flat"
         )
         self.button_4.place(
@@ -324,7 +332,7 @@ class HomeWindow:
             image=self.button_image_5,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: print("button_5 clicked"),
+            command=self.record_student,
             relief="flat"
         )
         self.button_5.place(
@@ -372,7 +380,7 @@ class HomeWindow:
             image=self.button_image_8,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: print("button_8 clicked"),
+            command=self.logout_function,
             relief="flat"
         )
         self.button_8.place(
@@ -392,15 +400,15 @@ class HomeWindow:
 
     def delete_student(self):
         self.master.destroy()
-        subprocess.run(['python', './deletestudent.py'])
+        subprocess.run(['python', './deletestudents.py'])
 
     def list_student(self):
         self.master.destroy()
-        subprocess.run(['python', ''])
+        subprocess.run(['python', './liststudent.py'])
 
     def record_student(self):
         self.master.destroy()
-        subprocess.run(['python', 'add_student.py'])
+        subprocess.run(['python', './attendance.py'])
 
     def logout_function(self):
         response = messagebox.askyesno(

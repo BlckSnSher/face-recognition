@@ -138,8 +138,8 @@ class LoginWindow:
             bg="#FFFFFF",
             fg="#000716",
             highlightthickness=0,
-            font=("ArialMT", 14 * -1)
-
+            font=("ArialMT", 14 * -1),
+            show="•"
         )
         self.entry_1.place(
             x=619.0,

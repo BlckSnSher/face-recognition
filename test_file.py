@@ -1,75 +1,88 @@
-from tkinter import *
-from pathlib import Path
+import tkinter as tk
+import mysql.connector
+
+# Connect to MySQL database
+mydb = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="root",
+    database="thesis"
+)
+
+# Create a cursor object
+mycursor = mydb.cursor()
+
+# Create the main window
+root = tk.Tk()
+root.title("Search Function")
+
+# Create the search bar
+search_var = tk.StringVar()
+search_bar = tk.Entry(root, textvariable=search_var)
+search_bar.pack(padx=10, pady=10)
 
 
-OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"./assets/frame2")
+# Create the search button
+def search():
+    # Clear the table
+    for widget in table_frame.winfo_children():
+        widget.destroy()
+
+    # Execute the search query
+    query = "SELECT * FROM students WHERE firstname LIKE %s"
+    value = ("%" + search_var.get() + "%",)
+    mycursor.execute(query, value)
+    result = mycursor.fetchall()
+
+    # Create the table headers
+    headers = ("ID", "firsname", "lastname", "course", "student id", "section", "course code", "time", "day", "lab room")
+    for i, header in enumerate(headers):
+        label = tk.Label(table_frame, text=header, font=("Arial", 12, "bold"), relief=tk.RIDGE)
+        label.grid(row=0, column=i, sticky="nsew")
+
+    # Create the table rows
+    for i, row in enumerate(result):
+        for j, item in enumerate(row):
+            label = tk.Label(table_frame, text=item, font=("Arial", 12), relief=tk.RIDGE)
+            label.grid(row=i + 1, column=j, sticky="nsew")
+
+            # Create the update button for each row
+            if j == 0:
+                print("update")
+                def update(id):
+                    # Create the update window
+                    update_window = tk.Toplevel(root)
+                    update_window.title("Update Item")
+
+                    # Create the text input
+                    update_var = tk.StringVar(value=row[1:])
+                    update_entry = tk.Entry(update_window, textvariable=update_var, width=30)
+                    update_entry.pack(padx=10, pady=10)
+
+                    # Create the update button
+                    print("updating items")
+                    def update_item():
+                        update_query = "UPDATE students SET firstname = %s, lastname = %s, student_id = %s WHERE id = %s"
+                        update_values = (update_var.get()[0], update_var.get()[1], update_var()[2], id)
+                        mycursor.execute(update_query, update_values)
+                        mydb.commit()
+                        update_window.destroy()
+                        search()
+
+                    update_button = tk.Button(update_window, text="Update", command=update_item)
+                    update_button.pack(padx=10, pady=10)
+
+                update_button = tk.Button(table_frame, text="Update", command=lambda id=row[0]: update(id))
+                update_button.grid(row=i + 2, column=j + 2, sticky="nsew")
 
 
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
+# Create the search button
+search_button = tk.Button(root, text="Search", command=search)
+search_button.pack(padx=10, pady=10)
 
+# Create the table frame
+table_frame = tk.Frame(root)
+table_frame.pack(padx=10, pady=10)
 
-class AddStudentWindow:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("Add Student")
-        self.master.configure(bg="#FFFFFF")
-
-        # Create a frame for the content
-        self.frame = Frame(self.master, bg="#FFFFFF")
-        self.frame.pack(fill=BOTH, expand=True)
-
-        # Create a canvas for the image
-        self.canvas = Canvas(self.frame, bg="#FFFFFF")
-        self.canvas.grid(row=0, column=0, columnspan=2, sticky=N+S+E+W)
-
-        self.image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
-        self.image_1 = self.canvas.create_image(
-            0, 0, anchor=NW, image=self.image_image_1)
-
-        # Create a label and entry for each input field
-        fields = ["First Name", "Last Name", "Email", "Phone", "Address", "City", "State", "Zip"]
-
-        for i, field in enumerate(fields):
-            label = Label(self.frame, text=field, bg="#FFFFFF", font=("OpenSans Bold", 16))
-            label.grid(row=i+1, column=0, padx=10, pady=10, sticky=W)
-
-            entry = Entry(self.frame, bd=0, bg="#FFFFFF", fg="#000716", font=("OpenSans Bold", 16))
-            entry.grid(row=i+1, column=1, padx=10, pady=10, sticky=W + E)
-
-        # Create the submit button
-        self.button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-        self.button_1 = Button(
-            self.frame,
-            image=self.button_image_1,
-            borderwidth=0,
-            highlightthickness=0,
-            command=self.submit,
-            relief="flat",
-            cursor="hand2"
-        )
-        self.button_1.grid(row=len(fields)+1, column=0, columnspan=2, pady=10)
-
-        # Set grid weights to make the canvas resize with the window
-        self.frame.columnconfigure(0, weight=1)
-        self.frame.rowconfigure(0, weight=1)
-
-        # Bind the canvas to resize with the window
-        self.canvas.bind("<Configure>", self.resize_image)
-
-    def resize_image(self, event):
-        # Resize the canvas and image to fill the window
-        self.canvas.config(width=event.width, height=event.height)
-        self.canvas.itemconfig(self.image_1, image=self.image_image_1.subsample(int(event.width / 2)))
-
-    def submit(self):
-        # TODO: Implement submit functionality
-        pass
-
-
-if __name__ == "__main__":
-    root = Tk()
-    root.resizable(True, True)
-    window = AddStudentWindow(root)
-    root.mainloop()
+# Run the main loop
+root.mainloop()

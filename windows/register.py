@@ -161,7 +161,9 @@ class RegisterWindow:
             bg="#FFFFFF",
             fg="#000716",
             highlightthickness=0,
-            font=("ArialMT", 14 * -1)
+            font=("ArialMT", 14 * -1),
+            show="•"
+
         )
         self.entry_2.place(
             x=582.0,
@@ -182,7 +184,9 @@ class RegisterWindow:
             bg="#FFFFFF",
             fg="#000716",
             highlightthickness=0,
-            font=("ArialMT", 14 * -1)
+            font=("ArialMT", 14 * -1),
+            show="•"
+
         )
         self.entry_3.place(
             x=582.0,

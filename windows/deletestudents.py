@@ -1,6 +1,6 @@
 import subprocess
 from pathlib import Path
-from tkinter import Tk, Canvas, Entry, Button, PhotoImage, ttk, Frame, BOTH, Scrollbar, messagebox, END
+from tkinter import Tk, Canvas, Entry, Button, PhotoImage, ttk, Frame, BOTH, Scrollbar, END, messagebox
 from tkinter.ttk import Style
 
 import mysql.connector as conn
@@ -15,7 +15,7 @@ db = conn.connect(
 cursor = db.cursor()
 
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"./assets/frame5")
+ASSETS_PATH = OUTPUT_PATH / Path(r"./assets/frame6")
 
 
 def relative_to_assets(path: str) -> Path:
@@ -34,7 +34,7 @@ def on_close():
 print("starting .....")
 
 
-class UpdateStudentWindow:
+class DeleteStudent:
     def __init__(self, master):
         self.master = master
         self.master.geometry("462x602")
@@ -87,8 +87,7 @@ class UpdateStudentWindow:
             bg="#FFFFFF",
             fg="#000716",
             highlightthickness=0,
-            font=("OpenSansRoman Regular", 14 * -1)
-
+            font=("ArialMT", 14 * -1)
         )
         self.entry_1.place(
             x=87.0,
@@ -98,21 +97,21 @@ class UpdateStudentWindow:
         )
 
         self.canvas.create_text(
-            69.0,
-            58.0,
+            155.0,
+            23.0,
             anchor="nw",
-            text="Search a student by name",
+            text="Delete Students",
             fill="#9F9F9F",
-            font=("OpenSansRoman Regular", 14 * -1)
+            font=("Arial BoldMT", 20 * -1)
         )
 
         self.canvas.create_text(
-            147.0,
-            21.0,
+            69.0,
+            59.0,
             anchor="nw",
-            text="Update Students",
+            text="Search a student by name",
             fill="#9F9F9F",
-            font=("OpenSansRoman Bold", 20 * -1)
+            font=("ArialMT", 14 * -1)
         )
 
         self.frame = Frame(self.canvas, bg="#fff")
@@ -173,9 +172,9 @@ class UpdateStudentWindow:
     def get_students(self):
         print("fetching the info .....")
         get_students = """
-        select student_id, firstname, lastname, course, section,
-         course_code, time, day, lab_room from students
-        """
+            select student_id, firstname, lastname, course, section,
+             course_code, time, day, lab_room from students
+            """
         cursor.execute(get_students)
         rows = cursor.fetchall()
         for row in rows:
@@ -188,7 +187,7 @@ class UpdateStudentWindow:
 
 
 window = Tk()
-app = UpdateStudentWindow(window)
+app = DeleteStudent(window)
 window.protocol("WM_DELETE_WINDOW", on_close)
 window.resizable(False, False)
 window.mainloop()
